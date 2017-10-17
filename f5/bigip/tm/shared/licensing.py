@@ -28,7 +28,7 @@ REST Kind
 
 from f5.bigip.resource import PathElement
 from f5.bigip.resource import UnnamedResource
-from f5.sdk_exception import UnsupportedMethod
+from f5.sdk_exception import UnsupportedOperation
 
 
 class Licensing(PathElement):
@@ -59,9 +59,10 @@ class Licensing(PathElement):
 class Activation(UnnamedResource):
     """BIG-IP® license activation status
 
-    Activation state objects only support the
-    :meth:`~f5.bigip.resource.Resource.load` method because they cannot be
-    modified via the API.
+    Activation state objects only support GET/POST/PUT HTTP methods.
+    To start the license activation process use create() method on a resource.
+    To modify the started license activation process use update() method on a resource.
+
 
     .. note::
 
@@ -74,23 +75,43 @@ class Activation(UnnamedResource):
         self._meta_data['required_load_parameters'] = set()
         self._meta_data['required_json_kind'] =\
             'tm:shared:licensing:activation:activatelicenseresponse'
+        self._meta_data['required_creation_parameters'] = {'baseRegKey',}
 
-    def update(self, **kwargs):
-        '''Update is not supported for License Activation
+    def create(self, **kwargs):
+        requests_params = self._handle_requests_params(kwargs)
+        self._check_create_parameters(**kwargs)
+        kwargs = self._check_for_python_keywords(kwargs)
+
+        # Make convenience variable with short names for this method.
+        _create_uri = self._meta_data['container']._meta_data['uri'] + 'activation/'
+        session = self._meta_data['bigip']._meta_data['icr_session']
+
+        kwargs = self._prepare_request_json(kwargs)
+
+        # Invoke the REST operation on the device.
+        response = session.post(_create_uri, json=kwargs, **requests_params)
+
+        # Make new instance of self
+        result = self._produce_instance(response)
+        return result
+
+    def modify(self, **kwargs):
+        """Modify is not supported for License Registration
 
         :raises: UnsupportedOperation
-        '''
-        raise UnsupportedMethod(
-            "%s does not support the update method" % self.__class__.__name__
+        """
+        raise UnsupportedOperation(
+            "%s does not support the modify method" % self.__class__.__name__
         )
 
 
 class Registration(UnnamedResource):
-    """BIG-IP® license registration status
+    """BIG-IP® license registration
 
-    Registration state objects only support the
-    :meth:`~f5.bigip.resource.Resource.load` method because they cannot be
-    modified via the API.
+    Registration endpoint only supports GET/PUT/DELETE HTTP methods.
+
+    To revoke device license use delete() method on the loaded object.
+    To activate license manually use update() method on the loaded object.
 
     .. note::
 
@@ -103,12 +124,27 @@ class Registration(UnnamedResource):
         self._meta_data['required_load_parameters'] = set()
         self._meta_data['required_json_kind'] =\
             'tm:shared:licensing:activation:activatelicenseresponse'
+        self._meta_data['read_only_attributes'] = ['generation', 'lastUpdateMicros']
 
-    def update(self, **kwargs):
-        '''Update is not supported for License Registration
+    def delete(self, **kwargs):
+        requests_params = self._handle_requests_params(kwargs)
+        delete_uri = self._meta_data['uri']
+        session = self._meta_data['bigip']._meta_data['icr_session']
+
+        # Check the generation for match before delete
+        force = self._check_force_arg(kwargs.pop('force', True))
+        if not force:
+            self._check_generation()
+
+        response = session.delete(delete_uri, **requests_params)
+        if response.status_code == 200:
+            self.__dict__ = {'deleted': True}
+
+    def modify(self, **kwargs):
+        """Modify is not supported for License Registration
 
         :raises: UnsupportedOperation
-        '''
-        raise UnsupportedMethod(
-            "%s does not support the update method" % self.__class__.__name__
+        """
+        raise UnsupportedOperation(
+            "%s does not support the modify method" % self.__class__.__name__
         )
