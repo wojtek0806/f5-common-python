@@ -28,6 +28,7 @@ REST Kind
 
 from f5.bigip.resource import PathElement
 from f5.bigip.resource import UnnamedResource
+from f5.bigip.resource import Resource
 from f5.sdk_exception import UnsupportedOperation
 
 
@@ -56,7 +57,7 @@ class Licensing(PathElement):
         }
 
 
-class Activation(UnnamedResource):
+class Activation(Resource):
     """BIG-IP® license activation status
 
     Activation state objects only support GET/POST/PUT HTTP methods.
@@ -75,7 +76,7 @@ class Activation(UnnamedResource):
         self._meta_data['required_load_parameters'] = set()
         self._meta_data['required_json_kind'] =\
             'tm:shared:licensing:activation:activatelicenseresponse'
-        self._meta_data['required_creation_parameters'] = {'baseRegKey',}
+        self._meta_data['required_creation_parameters'] = {'baseRegKey'}
 
     def create(self, **kwargs):
         requests_params = self._handle_requests_params(kwargs)
@@ -95,6 +96,11 @@ class Activation(UnnamedResource):
         result = self._produce_instance(response)
         return result
 
+    def load(self, **kwargs):
+        newinst = self._stamp_out_core()
+        newinst._refresh(**kwargs)
+        return newinst
+
     def modify(self, **kwargs):
         """Modify is not supported for License Registration
 
@@ -102,6 +108,15 @@ class Activation(UnnamedResource):
         """
         raise UnsupportedOperation(
             "%s does not support the modify method" % self.__class__.__name__
+        )
+
+    def delete(self, **kwargs):
+        """Delete is not supported for License Registration
+
+        :raises: UnsupportedOperation
+        """
+        raise UnsupportedOperation(
+            "%s does not support the delete method" % self.__class__.__name__
         )
 
 
